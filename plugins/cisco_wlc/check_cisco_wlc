@@ -79,9 +79,14 @@ exit 3
 fi
 
 COMMAND=`${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${oid_AP_names} | ${GREP} "$Val" | ${SED} "s/$oid_AP_names//g"`
+
+if [ "$COMMAND" == "" ]; then
+${ECHO} "CRIT - AP not found" 
+exit 2
+fi
+
 str="$COMMAND"
 oidNum=${str/ = STRING: \"$Val\"/}
-
 RESULT=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${oid_AP_status}${oidNum} | ${AWK} {'print $4'})
 
 # The value of this OID can be:
@@ -99,7 +104,7 @@ elif [ ${RESULT} -eq 3 ]; then
 ${ECHO} "WARN - AP OperStatus is downloading | status=${RESULT}" 
 exit 1
 else
-${ECHO} "Plugin problem - ${RESULT}" 
+${ECHO} "UNKNOWN - status ${RESULT}" 
 exit 3
 fi
 
