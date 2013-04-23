@@ -1,0 +1,39 @@
+This plugin works on WLC4402
+
+1. Copy plugin into plugin directory
+
+sudo cp check_cisco_wlc /usr/lib/nagios/plugins/
+
+
+2. Copy check_command definition in nagios-plugins config directory
+
+sudo cp check_cisco_wlc.cfg /etc/nagios-plugins/config/
+
+
+3. Define host
+
+define host{
+        use generic-hosts
+        host_name cisco-wlc-01
+        alias cisco-wlc-01
+        address 10.11.1.2
+        check_command check-host-alive
+}
+
+4. Define service checks
+
+# Check the number of AP registered on a Cisco Wireless Controller
+define service{
+        use generic-service
+        host_name cisco-wlc-01
+        service_description AP-Registered 
+        check_command check_cisco_wlc!Al1p66nmp!APnum!5
+}
+
+# Check the AP operational status (associated,disassociating,downloading)
+define service{
+        use generici-service
+        host_name cisco-wlc-01
+        service_description AP0021.d847.a0a4-Status
+        check_command check_cisco_wlc!Al1p66nmp!APstatus!AP0021.d847.a0a4
+}

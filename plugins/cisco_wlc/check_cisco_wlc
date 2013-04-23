@@ -1,0 +1,122 @@
+#!/bin/bash
+#jpajicek@gmail.com
+
+## Examples 
+# Check AP operational status
+# ./check_wlc -H 1.1.1.1 -C comunity -A APstatus -O AP0021.d847.a0a4
+##
+# Check number of access points connected to WLC
+# ./check_wlc -H 1.1.1.1 -C comunity -A APnum -O 5
+
+HOST=""
+COMUNITY=""
+Check=""
+Val=""
+SNMP=$(which snmpwalk)
+ECHO=$(which echo)
+AWK=$(which awk)
+WC=$(which wc)
+SED=$(which sed)
+GREP=$(which grep)
+
+## http://tools.cisco.com/Support/SNMP/do/BrowseOID.do?local=en
+##
+oid_AP_names="iso.3.6.1.4.1.14179.2.2.1.1.3"
+oid_AP_status="iso.3.6.1.4.1.14179.2.2.1.1.6"
+oid_AP_ip="1.3.6.1.4.1.14179.2.2.1.1.19"
+
+function printUsage() {
+
+echo "
+Usage: 
+check_cisco_wlc -h
+	- help
+check_cisco_wlc -H <HOST> -C <ComunityString> -A APnum -O <expected num of AP's>
+        - Check number of associated AP's
+check_cisco_wlc -H <HOST> -C <ComunityString> -A APstatus -O <AP Name>
+        - Check Cisco AP operational Status
+"
+exit 1
+
+}
+
+while getopts H:C:A:O:h options;
+do
+	case $options in
+		H ) HOST="$OPTARG";;
+		C ) COMUNITY="$OPTARG";;
+		A ) Check="$OPTARG";;
+		O ) Val="$OPTARG";;
+    		h ) printUsage
+         		exit 1;;
+
+	esac
+done
+
+function checkAPcount() {
+
+if [ "$Val" == "" ]; then
+echo "Missing option -O <expected num of AP's>"
+exit 3
+fi
+
+RESULT=`${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${oid_AP_names} | ${WC} -l`
+if [ "${RESULT}" -eq "${Val}" ]; then
+${ECHO} "OK - ${RESULT} AP found | status=${RESULT}" 
+exit 0
+else
+${ECHO} "WARN - Found ${RESULT} AP but expected were ${Val} | status=${RESULT}" 
+exit 1
+fi
+
+}
+
+function checkAPstatus() {
+
+if [ "$Val" == "" ]; then
+echo "Missing option -O <AP name>"
+exit 3
+fi
+
+COMMAND=`${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${oid_AP_names} | ${GREP} "$Val" | ${SED} "s/$oid_AP_names//g"`
+str="$COMMAND"
+oidNum=${str/ = STRING: \"$Val\"/}
+
+RESULT=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${oid_AP_status}${oidNum} | ${AWK} {'print $4'})
+
+# The value of this OID can be:
+# 1 - associated
+# 2 - disassociating
+# 3 - downloading
+
+if [ ${RESULT} -eq 1 ]; then
+${ECHO} "OK - AP OperStatus is associated | status=${RESULT}"
+exit 0
+elif [ ${RESULT} -eq 2 ]; then
+${ECHO} "CRIT - AP OperStatus is disassociated | status=${RESULT}" 
+exit 2
+elif [ ${RESULT} -eq 3 ]; then
+${ECHO} "WARN - AP OperStatus is downloading | status=${RESULT}" 
+exit 1
+else
+${ECHO} "Plugin problem - ${RESULT}" 
+exit 3
+fi
+
+}
+
+case "$Check" in
+        APnum)
+            checkAPcount
+	;;
+	APstatus)
+	    checkAPstatus
+	;;
+esac
+
+
+case "$1" in
+        help)
+            printUsage
+            exit 1
+esac
