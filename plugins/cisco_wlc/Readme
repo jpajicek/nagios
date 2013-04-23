@@ -27,7 +27,7 @@ define service{
         use generic-service
         host_name cisco-wlc-01
         service_description AP-Registered 
-        check_command check_cisco_wlc!Al1p66nmp!APnum!5
+        check_command check_cisco_wlc!secret!APnum!5
 }
 
 # Check the AP operational status (associated,disassociating,downloading)
@@ -35,5 +35,5 @@ define service{
         use generici-service
         host_name cisco-wlc-01
         service_description AP0021.d847.a0a4-Status
-        check_command check_cisco_wlc!Al1p66nmp!APstatus!AP0021.d847.a0a4
+        check_command check_cisco_wlc!secret!APstatus!AP0021.d847.a0a4
 }
