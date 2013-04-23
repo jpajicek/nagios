@@ -16,7 +16,7 @@ define host{
         use generic-hosts
         host_name cisco-wlc-01
         alias cisco-wlc-01
-        address 10.11.1.2
+        address <ipaddress>
         check_command check-host-alive
 }
 
