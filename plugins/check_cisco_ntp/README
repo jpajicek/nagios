@@ -1,0 +1,1 @@
+Nagios plugin to monitor NTP status on Cisco switches/routers via ssh.

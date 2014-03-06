@@ -1,0 +1,302 @@
+#!/bin/bash
+# Author jpajicek@gmail.com
+# version 0.1
+# http://download.synology.com/download/ds/userguide/Synology_DiskStation_MIB_Guide_enu_20110725.pdf
+
+HOST=$1
+COMUNITY=$2
+TYPE=$3
+SSHKEY=$2
+SNMP=$(which snmpwalk)
+ECHO=$(which echo)
+AWK=$(which awk)
+WC=$(which wc)
+SED=$(which sed)
+SSH=$(which ssh)
+SSH_USER=nagiosadmin
+
+
+
+function synoDisk() {
+#DISK STATUS
+
+OID="1.3.6.1.4.1.6574.2"
+LABELS="1.1.2"
+STATUS="1.1.5"
+DiskNum=$1
+LABEL=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID}.${LABELS}.${DiskNum} | ${AWK} {'print $4 $5'} | ${SED} 's/"//g')
+RESULT=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID}.${STATUS}.${DiskNum} | ${AWK} {'print $4'})
+
+# "Synology disk status 
+#
+#  Normal(1): The hard disk functions normally.
+#  Initialized(2): The hard disk has system partition but no data.
+#  NotInitialized(3):	The hard disk does not have system in system partition.	
+#  SystemPartitionFailed(4): The system partitions on the hard disks are damaged.
+#  Crashed(5): The hard disk has damaged.
+
+if [ ${RESULT} -eq 1 ]; then
+${ECHO} "OK - ${LABEL} OperStatus:Normal | status=${RESULT}"
+exit 0
+elif [ ${RESULT} -eq 2 ]; then
+${ECHO} "WARN - ${LABEL} OperStatus:Initialized, NoData | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 3 ]; then
+${ECHO} "WARN - ${LABEL} OperStatus:NotInitialized, MissingPartition | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 4 ]; then
+${ECHO} "WARN - ${LABEL} OperStatus:SystemPartitionFailed | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 5 ]; then
+${ECHO} "CRITICAL - {LABEL} OperStatus:Crashed | data to display under Performance Data: of the service view" 
+exit 2
+else
+${ECHO} "Plugin problem - ${RESULT} | data to display under Performance Data: of the service view" 
+exit 1
+fi
+
+}
+
+function  synoRaid() {
+
+#DISK STATUS
+
+OID="1.3.6.1.4.1.6574.3"
+LABELS="1.1.2.0"
+STATUS="1.1.3.0"
+DiskNum=$1
+LABEL=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID}.${LABELS} | ${AWK} {'print $4 $5'} | ${SED} 's/"//g')
+RESULT=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID}.${STATUS} | ${AWK} {'print $4'})
+
+#  RaidStatus
+#  Normal(1),
+#  Repairing(2),
+#  Migrating(3),
+#  Expanding(4),
+#  Deleting(5),
+#  Creating(6),
+#  RaidSyncing(7),
+#  RaidParityChecking(8),
+#  RaidAssembling(9),
+#  Canceling(10),
+#  Degrade(11),
+#  Crashed(12)
+
+if [ ${RESULT} -eq 1 ]; then
+${ECHO} "OK - RaidStatus ${LABEL} OperStatus:Normal | status=${RESULT}"
+exit 0
+elif [ ${RESULT} -eq 2 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:Repairing | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 3 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:Migrating, MissingPartition | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 4 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:Expanding | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 5 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:Deleting | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 6 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:Creating | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 7 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:RaidSyncing | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 8 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:RaidParityChecking | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 9 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:RaidAssembling | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 10 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:Canceling | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 11 ]; then
+${ECHO} "WARN - RaidStatus ${LABEL} OperStatus:Degrade | status=${RESULT}" 
+exit 1
+elif [ ${RESULT} -eq 12 ]; then
+${ECHO} "CRITICAL - RaidStatus {LABEL} OperStatus:Crashed | data to display under Performance Data: of the service view" 
+exit 2
+else
+${ECHO} "Plugin problem - ${RESULT} | data to display under Performance Data: of the service view" 
+exit 1
+fi
+
+
+}
+
+function checkVolume() {
+
+WARN=$2
+CRIT=$3
+
+Command=$(ssh -i ${SSHKEY} ${SSH_USER}@${HOST} "df | grep $1")
+Total=$(${ECHO} ${Command} | $AWK {'print $2'})
+Free=$(${ECHO} ${Command} | $AWK {'print $4'})
+Used=$(${ECHO} ${Command} | $AWK {'print $3'})
+
+UsedPerc=$(echo "scale=2; $Free/$Total*100;" | bc )
+RESULT=${UsedPerc/.*}
+
+if [ "${RESULT}" -ge "${WARN}" ]; then
+${ECHO} "OK - ${RESULT}% free space"
+exit 0
+elif [ "${RESULT}" -le "${WARN}" ] && [ "${RESULT}" -gt "${CRIT}"  ]; then
+${ECHO} "WARN - ${RESULT}% free space" 
+exit 1
+elif [ "${RESULT}" -lt "${WARN}" ] && [ "${RESULT}" -le "${CRIT}" ]; then
+${ECHO} "CRITICAL - ${RESULT}% free space" 
+exit 2
+else
+${ECHO} "Plugin problem - ${RESULT} | data to display under Performance Data: of the service view" 
+exit 1
+fi
+
+}
+
+function synoSystem() {
+# Check system partition status
+OID="1.3.6.1.4.1.6574.1.1"
+
+RESULT=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID} | ${AWK} {'print $4'})
+
+if [ ${RESULT} -eq 1 ]; then
+${ECHO} "OK - System Partition OperStatus:Normal | status=${RESULT}" 
+exit 0
+elif [ ${RESULT} -eq 2 ]; then
+${ECHO} "CRITICAL - System Partition OperStatus:Failed | status=${RESULT}" 
+exit 2
+else
+${ECHO} "Plugin problem - ${RESULT} | data to display under Performance Data: of the service view" 
+exit 1
+fi
+}
+
+function synoSystemTemp() {
+# Check system partition status
+OID="1.3.6.1.4.1.6574.1.2"
+WARN=$1
+CRIT=$2
+
+RESULT=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID} | ${AWK} {'print $4'})
+
+if [ "${RESULT}" -le "${WARN}" ]; then
+${ECHO} "OK - ${RESULT} Celsius | status=${RESULT}"
+exit 0
+elif [ "${RESULT}" -gt "${WARN}" ] && [ "${RESULT}" -le "${CRIT}" ]; then
+${ECHO} "WARN - ${RESULT} Celsius | status=${RESULT}"
+exit 1
+elif [ "${RESULT}" -gt "${CRIT}" ]; then
+${ECHO} "CRITICAL - ${RESULT} Celsius | status=${RESULT}" 
+exit 2
+else
+${ECHO} "Plugin problem - ${RESULT} | data to display under Performance Data: of the service view" 
+exit 1
+fi
+
+}
+
+function synoSystemPower() {
+# Check system partition status
+OID="1.3.6.1.4.1.6574.1.3"
+
+RESULT=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID} | ${AWK} {'print $4'})
+
+if [ ${RESULT} -eq 1 ]; then
+${ECHO} "OK - Power Supplies OperStatus:Normal | status=${RESULT}" 
+exit 0
+elif [ ${RESULT} -eq 2 ]; then
+${ECHO} "WARN - Power Supplies OperStatus:Failed | status=${RESULT}" 
+exit 1
+else
+${ECHO} "Plugin problem - ${RESULT} | data to display under Performance Data: of the service view" 
+exit 1
+fi
+}
+
+function synoSystemFan() {
+
+# Check system partition status
+OID_sys="1.3.6.1.4.1.6574.1.4.1"
+OID_cpu="1.3.6.1.4.1.6574.1.4.2"
+
+RESULT_sys=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID_sys} | ${AWK} {'print $4'})
+RESULT_cpu=$(${SNMP} -v 2c -c ${COMUNITY} ${HOST} ${OID_cpu} | ${AWK} {'print $4'})
+
+if [ ${RESULT_sys} -eq 1 ] && [ ${RESULT_cpu} -eq 1 ]; then
+${ECHO} "OK - Fans OperStatus:Normal | status=${RESULT_sys}" 
+exit 0
+elif [ ${RESULT_sys} -eq 2 ] && [ ${RESULT_cpu} -eq 1 ]; then
+${ECHO} "CRITICAL - Chassis Fan OperStatus:Failed | status=${RESULT}" 
+exit 2
+elif [ ${RESULT_sys} -eq 1 ] && [ ${RESULT_cpu} -eq 2 ]; then
+${ECHO} "CRITICAL - CPU Fan OperStatus:Failed | status=${RESULT}" 
+exit 2
+elif [ ${RESULT_sys} -eq 2 ] && [ ${RESULT_cpu} -eq 2 ]; then
+${ECHO} "CRITICAL - Fans OperStatus:Failed | status=${RESULT}" 
+exit 2
+else
+${ECHO} "Plugin problem - ${RESULT} | data to display under Performance Data: of the service view" 
+exit 1
+fi
+}
+
+function printUsage() {
+
+echo "
+Usage: 
+check_synology <HOST> <ComunityString> synodisk <disk_number(e.g. 0)> 
+	- check information regarding disks
+check_synology <HOST> <ComunityString> synosystem
+	- check system partition status
+check_synology <HOST> <ComunityString> synosystem:temp <warning_in_cels> <critical_in_cels>
+	- check system temperature
+check_synology <HOST> <ComunityString> synosystem:power
+	- check power supplies
+check_synology <HOST> <ComunityString> synosystem:fan
+	- check CPU and Chassis fan
+check_synology <HOST> <ComunityString> synoraid
+	- check Raid status
+check_synology <HOST> <Path_to_ssh_ida> checkvolume <volume_mount_name> <warning_in_%> <critical_in_%>
+	- check volume available space
+"
+
+exit 1
+
+}
+
+case "$3" in
+        synodisk)
+	    [ "$4" != "" ] || printUsage
+            synoDisk $4
+            ;;
+	checkvolume)
+	    [ "$4" != "" ] || printUsage
+	    checkVolume $4 $5 $6
+	    ;;
+        synoraid)
+	    synoRaid
+	    ;;
+	synosystem)
+	   synoSystem
+	   ;;
+        synosystem:temp)
+           synoSystemTemp $4 $5
+           ;;
+        synosystem:power)
+           synoSystemPower
+	  ;;
+	synosystem:fan)
+           synoSystemFan
+           ;;
+        *)
+            printUsage
+            exit 1
+esac
+
+case "$1" in
+        *)
+            printUsage
+            exit 1
+esac
