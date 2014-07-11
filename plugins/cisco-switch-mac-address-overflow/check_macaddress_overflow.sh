@@ -12,8 +12,9 @@ ipaddr=$1
 
 LOGFILE="/tmp/cisco-macoverflow-$ipaddr.txt"
 
-id='emea.nagios'
-pass='N1giosadmin!'
+# Cisco ssh login 
+id='username'
+pass='password'
 
 rm -f $LOGFILE
 
