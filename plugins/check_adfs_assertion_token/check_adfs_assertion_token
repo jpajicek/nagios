@@ -1,0 +1,72 @@
+#!/bin/bash
+
+## Request ADFS assertion token 
+## Pavel.Jedlicka@akqa.com
+
+
+ADFS="$1"
+USERNAME="$2"
+PASSWORD="$3"
+URN=${4:-'urn:federation:MicrosoftOnline'}
+CURL=$(which curl)
+
+if [ $# -lt 3 ]; then
+        echo "Usage: $0 <adfs.domain.com> <username> '<password>' <urn:endpoint:address>"
+        exit 3
+fi
+
+echo "
+<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:a=\"http://www.w3.org/2005/08/addressing\" xmlns:u=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">
+    <s:Header>
+        <a:Action s:mustUnderstand=\"1\">http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue</a:Action>
+        <a:To s:mustUnderstand=\"1\">https://adfs.akqa.com/adfs/services/trust/13/UsernameMixed</a:To>
+        <o:Security s:mustUnderstand=\"1\" xmlns:o=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\" >
+            <o:UsernameToken>
+                <o:Username>$USERNAME</o:Username>
+                <o:Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText\">$PASSWORD</o:Password>
+            </o:UsernameToken>
+        </o:Security>
+    </s:Header>
+    <s:Body>
+        <trust:RequestSecurityToken xmlns:trust=\"http://docs.oasis-open.org/ws-sx/ws-trust/200512\">
+            <wsp:AppliesTo xmlns:wsp=\"http://schemas.xmlsoap.org/ws/2004/09/policy\">
+                <a:EndpointReference>
+                    <a:Address>$URN</a:Address>
+                </a:EndpointReference>
+            </wsp:AppliesTo>
+            <trust:KeyType>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Bearer</trust:KeyType>
+            <trust:RequestType>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue</trust:RequestType>
+            <trust:TokenType>urn:oasis:names:tc:SAML:2.0:assertion</trust:TokenType>
+        </trust:RequestSecurityToken>
+    </s:Body>
+</s:Envelope>
+" > /tmp/request-token.xml
+
+
+CMD=$($CURL -s https://$ADFS/adfs/services/trust/13/usernamemixed -k --data @/tmp/request-token.xml -H "Content-Type:application/soap+xml")
+EXT=$?
+
+if [ $EXT -eq 0 ]; then
+
+  AUTH_TEST=$(echo $CMD | grep -q 'FailedAuthentication')
+
+  if [ $? -ne 0 ]; then
+    RESULT=$(echo $CMD | xml_pp | grep -q 'Assertion ID=".*"')
+    if [ $? -eq 0 ]; then
+      echo "OK: Got a Token"
+      exit 0
+    else
+      echo "CRITICAL: Couldn't Get a Token"
+      exit 2
+    fi
+  else
+    echo "WARNING: Authentication Failed"
+    exit 1
+  fi
+
+elif [ $EXT -eq 6 ]; then 
+  echo "UNKNOWN: Couldn't Resolve Host"
+  exit 3
+
+fi
