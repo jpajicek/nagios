@@ -1,43 +1,44 @@
 #!/usr/bin/python
 
 
-
-### pavel.jedlicka@akqa.com
-
+### pavel.jedlicka@akqa.com + jonny.ford@akqa.com
 ### Deps: apt-get install python-suds python-setuptools python-pynetsnmp
-
 ### This plugin is to check warranty using DELL service tag read via SNMP
 
 
-
 import sys, datetime
-import netsnmp, argparse, suds
+import netsnmp, argparse, suds, requests, json
 
 def getServiceTag(hst,com):
     	oid = netsnmp.VarList(netsnmp.Varbind('.1.3.6.1.4.1.674.10892.1.300.10.1.11'))
     	res = netsnmp.snmpwalk(oid, Version = 2, DestHost=hst, Community=com)
-    	return res
+	if str(res) != "()":
+                return res
+        else:
+                print "Couldn't read snmp value"
+                sys.exit(3)
 
 def get_warr(svctag):
-        url = "http://xserv.dell.com/services/assetservice.asmx?WSDL"
-        client = suds.client.Client(url)
-        res=client.service.GetAssetInformation('12345678-1234-1234-1234-123456789012', 'dellwarrantycheck', svctag)
- 
-        hdrdata=res['Asset'][0]['AssetHeaderData']
-        ent=res['Asset'][0]['Entitlements'][0]
- 
-        shipped=hdrdata['SystemShipDate']
-        warrs=[]
-        for i in ent:
-                if i==None:
-                        continue
-                warrs.append(i['EndDate'])
-	 
-        warrs.sort()
-        endwarranty=warrs[-1]
-        daysleft=endwarranty - datetime.datetime.now()
-        return (shipped.strftime("%Y-%m-%d"), datetime.datetime.now().strftime("%Y-%m-%d"), endwarranty.strftime("%Y-%m-%d"), daysleft.days)
- 
+	shorturl = "https://api.dell.com/support/assetinfo/v4/getassetwarranty/"
+	apiKey = "9b60db7b274c491eb86eef532d088c96"
+	url = shorturl+svctag+"?apikey="+apiKey
+
+	try:
+ 		res = requests.get(url)
+        	parsed_json = res.json()
+    	except Exception, e:
+        	print "Couldn't read from Dell site"
+        	sys.exit(3)
+	
+	data = parsed_json['AssetWarrantyResponse']
+	warranties = data[0]['AssetEntitlementData']
+	end_date = warranties[0]['EndDate']
+	end_date = datetime.datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%S')
+	daysleft = end_date - datetime.datetime.now()
+	shipped = data[0]['AssetHeaderData']['ShipDate']
+	shipped = datetime.datetime.strptime(shipped, '%Y-%m-%dT%H:%M:%S')
+	now = datetime.datetime.now()
+	return(shipped.strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), daysleft.days)
 
 def main(argv):
   	host = ''
@@ -72,4 +73,3 @@ def main(argv):
 
 if __name__ == "__main__":
    	main(sys.argv[1:])
-
