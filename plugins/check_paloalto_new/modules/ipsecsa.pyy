@@ -1,0 +1,34 @@
+
+import requests
+import xml.etree.ElementTree as XML
+import loggging as log 
+
+def create_check(args):
+    data = ipsecSA(args.host, args.token, args.tunnel).readAPI()    
+ 
+
+class ipsecSA():
+    def __init__(self, host, token, tunnel):
+        self.host = host
+        self.token = token
+        self.tunnel = tunnel
+        self.cmd = '<show><vpn><ipsec-sa><tunnel>%s</tunnel></ipsec-sa></vpn></show>' % (self.tunnel)
+        self.request_url = 'https://%s/api/?key=%s&type=op&cmd=%s' % (self.host, self.token, self.cmd)
+   
+    def readAPI(self):
+        requests.packages.urllib3.disable_warnings()
+        req = requests.post(self.request_url, verify=False)
+        if req.status_code == 200:
+            nagios_msg(3,'Expected status code: 200 (OK), returned' 
+			' status code was: %d' % req.status_code)
+                             
+	return req.content
+
+def nagios_msg(exitcode, message=''):
+    """ Exit gracefully with exitcode and (optional) message """
+
+    log.debug('Exiting with status {0}. Message: {1}'.format(exitcode, message))
+
+    if message:
+        print(message)
+    exit(exitcode)
