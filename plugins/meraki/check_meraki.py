@@ -46,6 +46,7 @@ def _reader(url):
          'x-cisco-meraki-api-key': format(str(apikey)),
          'Content-Type': 'application/json'
      }
+    requests.packages.urllib3.disable_warnings()
     dashboard = requests.get(url, headers=headers)
     result = _returnhandler(dashboard.status_code, dashboard.text)
     return result
