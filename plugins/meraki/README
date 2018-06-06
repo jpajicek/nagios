@@ -1,0 +1,6 @@
+## Nagios plugin to check Meraki cameras using API
+
+Usage:
+	$python check_meraki.py --netid NETID --token API_TOKEN
+Help:
+	$python check_meraki.py --help
