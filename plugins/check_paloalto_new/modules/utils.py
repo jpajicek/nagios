@@ -20,14 +20,14 @@ class XMLreader():
 
     def read(self):
         requests.packages.urllib3.disable_warnings()
-        req = requests.post(self.request_url, verify=False, timeout=2)
+        req = requests.post(self.request_url, verify=False, timeout=10)
         if req.status_code != 200:
-            nagios_msg(3,'Expected status code: 200 (OK), returned'
+	    nagios_msg(3,'Expected status code: 200 (OK), returned'
                         ' status code was: %d' % req.status_code)
         soup = BeautifulSoup(req.content, "lxml-xml")
         result = soup.response['status']
         if result != 'success':
-            nagios_msg(3,'Request didn\'t succeed, result was %s'
+	    nagios_msg(3,'Request didn\'t succeed, result was %s'
                         ' % result')
         return soup
 
