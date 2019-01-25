@@ -53,6 +53,7 @@ def reader(username, password, url, cmd, timeout = 10):
 
 	try:
 		urllib3.disable_warnings()
+		requests.packages.urllib3.disable_warnings()
 		response = requests.post(url, data=json.dumps(payload), headers=headers, auth=(username, password), verify=False, timeout=timeout).json()
 
 		if _isjson(response):
