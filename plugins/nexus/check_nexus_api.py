@@ -4,7 +4,7 @@ import argparse
 import sys
 import logging as log
 
-from modules import version, vpc
+from modules import version, vpc, fex
 
 
 def main():
@@ -43,10 +43,14 @@ def parse_args(args):
     parser_version.set_defaults(func=version)
 
     # Sub-Parser for command 'vpc'.
-    parser_vpc = subparsers.add_parser('vpc',  description='Uses Cisco command - show vpc brief.')
+    parser_vpc = subparsers.add_parser('vpc',  help='Show vpc brief')
     parser_vpc.add_argument('-o', '--option', choices=['domain', 'portchannel'], required=False)
     parser_vpc.add_argument('-r', '--role', help='Expect VPC role to be primary or secondary, eg. vpc -o domain -r primary (optional)', default='', required=False)
     parser_vpc.set_defaults(func=vpc)
+
+    # Sub-Parser for command 'fex'.
+    parser_fex = subparsers.add_parser('fex', help='Show fex details')
+    parser_fex.set_defaults(func=fex)
 
     return parser.parse_args(args)
 
