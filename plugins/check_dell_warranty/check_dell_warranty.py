@@ -6,7 +6,7 @@
 ### This plugin is to check warranty using DELL service tag read via SNMP
 
 import sys, datetime
-#import netsnmp
+import netsnmp
 import argparse, suds, requests, json, urllib3
 
 client_id = 'l7528378424872394723947'
