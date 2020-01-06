@@ -6,11 +6,11 @@
 ### This plugin is to check warranty using DELL service tag read via SNMP
 
 import sys, datetime
-import netsnmp
+#import netsnmp
 import argparse, suds, requests, json, urllib3
 
-client_id = 'l7528378424872394723947'
-client_secret =  '6d37c4c648393498394839999'
+client_id = 'l75128021f1a1149d7b673082fb4bafb20'
+client_secret =  '6d37c4c648ce49158732862d01277a6c'
 
 
 def getAuthToken():
@@ -48,14 +48,22 @@ def get_warr(svctag):
 
 	data = json.loads(response.text)
 	if data != []:
-		shipped = data[0]['shipDate']
-		shipped = datetime.datetime.strptime(shipped, '%Y-%m-%dT%H:%M:%SZ')
 		warranties = data[0]['entitlements']
-		end_date = warranties[0]['endDate']
+		long_msg = []
+		for warranty in warranties:
+			#print ('"{} - {}"'.format(warranty['serviceLevelDescription'],datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.999Z').date())) 
+			item = 'Entitlement: '+str(warranty['serviceLevelDescription'])+', Expires: '+str(datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.999Z').date())
+			long_msg.insert(0, item) 
+		shipped = data[0]['shipDate']
+		shipped = datetime.datetime.strptime(shipped, '%Y-%m-%dT%H:%M:%SZ').date()
+		shipped_str = shipped.strftime("%Y-%m-%d")
+		end_date = warranties[-1]['endDate']
 		end_date = datetime.datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%S.999Z')
+		end_date_str = end_date.strftime("%Y-%m-%d")
 		daysleft = end_date - datetime.datetime.now()
-		now = datetime.datetime.now()
-		return(shipped.strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), daysleft.days)
+		daysleft_str = daysleft.days
+		now_str = datetime.datetime.now().strftime("%Y-%m-%d")
+		return(shipped_str, now_str, end_date_str, daysleft_str, long_msg)
 	else:
 		print ("Received empty response from Dell, exiting ...")
 		sys.exit(3)
@@ -80,15 +88,15 @@ def main(argv):
 		sys.exit(3)
 	if args.community != 0 and args.tag == 0:
 		tag=getServiceTag(host,commstring)       
-		(shipped, currdate, endw, daysleft)=get_warr(tag[0])	
+		(shipped, currdate, endw, daysleft, long_msg)=get_warr(tag[0])	
 	elif args.community == 0 and args.tag != 0:
-		(shipped, currdate, endw, daysleft)=get_warr(tag)
+		(shipped, currdate, endw, daysleft,long_msg)=get_warr(tag)
 
 	if int(daysleft) < int(args.warning):
-		print ("WARNING: Warranty ends in {0} days , Warranty ends: {1}, Server was shipped on: {2} (y-m-d)".format(daysleft,endw,shipped))
+		print ("WARNING: Warranty ends in {0} days, Expires: {1}, Server was shipped on: {2} (Y-M-D), Details: {3}".format(daysleft,endw,shipped,long_msg))
 		sys.exit(1)
 	else:
-		print ("OK: Warranty days left: {0} , Warranty ends: {1}, Server was shipped on: {2} (y-m-d)".format(daysleft,endw,shipped))
+		print ("OK: Warranty days left: {0}, Expires: {1}, Server was shipped on: {2} (Y-M-D), Details: {3}".format(daysleft,endw,shipped,long_msg))
 		sys.exit(0)
 
 if __name__ == "__main__":
