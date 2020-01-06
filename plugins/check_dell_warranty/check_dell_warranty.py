@@ -9,8 +9,8 @@ import sys, datetime
 #import netsnmp
 import argparse, suds, requests, json, urllib3
 
-client_id = 'l75128021f1a1149d7b673082fb4bafb20'
-client_secret =  '6d37c4c648ce49158732862d01277a6c'
+client_id = 'l75128021f1a1149d7b673082fb4ba220'
+client_secret =  '6d37c1211878423874687326487236'
 
 
 def getAuthToken():
