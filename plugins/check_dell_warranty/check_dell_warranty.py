@@ -50,14 +50,17 @@ def get_warr(svctag):
 	if data != []:
 		warranties = data[0]['entitlements']
 		long_msg = []
+		all_end_dates = []
 		for warranty in warranties:
-			#print ('"{} - {}"'.format(warranty['serviceLevelDescription'],datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.999Z').date())) 
+			#print ('"{} - {}"'.format(warranty['serviceLevelDescription'],datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.999Z').date()))
+			all_end_dates.append(warranty['endDate'])  
 			item = 'Entitlement: '+str(warranty['serviceLevelDescription'])+', Expires: '+str(datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.999Z').date())
 			long_msg.insert(0, item) 
 		shipped = data[0]['shipDate']
 		shipped = datetime.datetime.strptime(shipped, '%Y-%m-%dT%H:%M:%SZ').date()
 		shipped_str = shipped.strftime("%Y-%m-%d")
-		end_date = warranties[-1]['endDate']
+		#end_date = warranties[-1]['endDate']
+		end_date =  max(all_end_dates)
 		end_date = datetime.datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%S.999Z')
 		end_date_str = end_date.strftime("%Y-%m-%d")
 		daysleft = end_date - datetime.datetime.now()
