@@ -9,8 +9,8 @@ import sys, datetime
 import netsnmp
 import argparse, suds, requests, json, urllib3
 
-client_id = ''
-client_secret =  ''
+client_id = 'l75128021f1a1149d7b673082fb4bafb20'
+client_secret =  '6d37c4c648ce49158732862d01277a6c'
 
 
 def getAuthToken():
@@ -52,16 +52,16 @@ def get_warr(svctag):
 		long_msg = []
 		all_end_dates = []
 		for warranty in warranties:
-			#print ('"{} - {}"'.format(warranty['serviceLevelDescription'],datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.999Z').date()))
 			all_end_dates.append(warranty['endDate'])  
-			item = 'Entitlement: '+str(warranty['serviceLevelDescription'])+', Expires: '+str(datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.%fZ').date())
+			warranty_enddate = warranty['endDate']
+			#item = 'Entitlement: '+str(warranty['serviceLevelDescription'])+', Expires: '+str(datetime.datetime.strptime(warranty['endDate'], '%Y-%m-%dT%H:%M:%S.%fZ').date())
+			item = 'Entitlement: '+str(warranty['serviceLevelDescription'])+', Expires: '+str(datetime.datetime.strptime(warranty_enddate[:12], '%Y-%m-%dT%H').date())
 			long_msg.insert(0, item) 
 		shipped = data[0]['shipDate']
 		shipped = datetime.datetime.strptime(shipped, '%Y-%m-%dT%H:%M:%SZ').date()
 		shipped_str = shipped.strftime("%Y-%m-%d")
-		#end_date = warranties[-1]['endDate']
 		end_date =  max(all_end_dates)
-		end_date = datetime.datetime.strptime(end_date, '%Y-%m-%dT%H:%M:%S.%fZ')
+		end_date = datetime.datetime.strptime(end_date[:12], '%Y-%m-%dT%H')
 		end_date_str = end_date.strftime("%Y-%m-%d")
 		daysleft = end_date - datetime.datetime.now()
 		daysleft_str = daysleft.days
