@@ -7,7 +7,7 @@ def _isjson(myjson):
 	""" Return true is JSON is valid and is not empty """
 
 	try:
-		json_object = json.loads(json.dumps(myjson))
+		json_object = json.loads(json.dumps(myjson.json()))
 		if json_object:
 			return True
 		else:
@@ -54,11 +54,11 @@ def reader(username, password, url, cmd, timeout = 10):
 	try:
 		urllib3.disable_warnings()
 		requests.packages.urllib3.disable_warnings()
-		response = requests.post(url, data=json.dumps(payload), headers=headers, auth=(username, password), verify=False, timeout=timeout).json()
+		response = requests.post(url, data=json.dumps(payload), headers=headers, auth=(username, password), verify=False, timeout=timeout)
 
 		if _isjson(response):
 			if _hasValidParams(response):
-				return response
+				return response.json()
 			else:
 				nagios_msg(3, "cisco command: " + response['error']['message'] )
 		else:
