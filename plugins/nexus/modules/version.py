@@ -1,6 +1,6 @@
 ## Cisco: show version
 
-from utils import nagios_msg, reader
+from modules.utils import nagios_msg, reader
 
 def create_check(args):
     """ Specify command and define check logic """

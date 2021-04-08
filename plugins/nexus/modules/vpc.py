@@ -1,7 +1,7 @@
 ## Cisco: show vpc 
 
 import re
-from utils import nagios_msg, reader
+from modules.utils import nagios_msg, reader
 
 def create_check(args):
 	""" Specify command and define check logic """
@@ -11,9 +11,9 @@ def create_check(args):
 	url = "https://"+host+"/ins"
 	username = args.username
 	password = args.password
- 	option = str(args.option)
+	option = str(args.option)
 
- 	response = reader(username, password, url, cmd)
+	response = reader(username, password, url, cmd)
 
 	vpc_peer_status = response['result']['body']['vpc-peer-status']
 	vpc_peer_status_reason = response['result']['body']['vpc-peer-status-reason']

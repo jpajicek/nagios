@@ -4,7 +4,7 @@ import argparse
 import sys
 import logging as log
 
-from modules import version, vpc, fex
+from modules import version, vpc, fex, eigrp
 
 
 def main():
@@ -51,6 +51,12 @@ def parse_args(args):
     # Sub-Parser for command 'fex'.
     parser_fex = subparsers.add_parser('fex', help='Show fex details')
     parser_fex.set_defaults(func=fex)
+
+    # Sub-Parser for command 'eigrp'.
+    parser_eigrp = subparsers.add_parser('eigrp', help='Show ip eigrp neighbors')
+    parser_eigrp.add_argument('--vrf', help='VRF name (optional)', default='default', required=False)
+    parser_eigrp.add_argument('--count', help='Expected number of EIGRP neighbors', required=True)
+    parser_eigrp.set_defaults(func=eigrp)
 
     return parser.parse_args(args)
 
