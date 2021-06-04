@@ -22,23 +22,25 @@ def check_result(expected_count, data):
 	neighbor_list = data[1]
 	expected_count = int(expected_count) 
 	cache['current_status'] = []
-	cache['ok_status'] = []
-	diff = []
+	if "ok_status" not in cache:
+		cache['ok_status'] = []
+
+	diffr = []
 
 	if expected_count == current_count:
 		cache['ok_status'] = neighbor_list
 		cache.close()
-		nagios_msg(0, 'OK: EIGRP peers OK - Found {0} neighbors '.format(current_count))
+		nagios_msg(0, 'OK: EIGRP peers OK - Found {0} neighbors. Current neighbors - {1} '.format(current_count, neighbor_list))
 	if expected_count < current_count: 
 		cache['current_status'] = neighbor_list
-		diff = [ peer for peer in cache['current_status'] if peer not in cache['ok_status']]
+		diffr = [ peer for peer in cache['ok_status'] + cache['current_status'] if peer not in cache['ok_status'] or peer not in cache['current_status']]
 		cache.close()
-		nagios_msg(1, 'Warning: Total number of neighbors is {0}. Found new EIGRP adjacency with -> {1}'.format(current_count, diff))
+		nagios_msg(1, 'Warning: Total number of neighbors is {0}. Found new EIGRP adjacency with -> {1}'.format(current_count, diffr))
 	if expected_count > current_count: 		
 		cache['current_status'] = neighbor_list
-		diff = [ peer for peer in cache['ok_status'] if peer not in cache['current_status']]
+		diffr = [ peer for peer in cache['ok_status'] + cache['current_status'] if peer not in cache['ok_status'] or peer not in cache['current_status']]
 		cache.close()
-		nagios_msg(1, 'Warning: Total number of neighbors is {0}. Lost EIGRP adjacency with -> {1}'.format(current_count, diff))
+		nagios_msg(1, 'Warning: Total number of neighbors is {0}. Lost EIGRP adjacency with -> {1}'.format(current_count, diffr))
 
 def eigrpNeighbors(response):
 	""" Return eigrp peers + count """
