@@ -1,11 +1,9 @@
 import json
 import requests
 import urllib3
+import sys
 from requests.auth import HTTPBasicAuth
 
-
-user='nagios'
-personalApiToken='WgS9C14yZ9Z6amBv2g5Sdg'
 
 baseURL = 'https://puppet4.akqa.net'
 path='/api/v2/hosts?search=last_report>"70 minutes ago" and (status.failed > 0 or status.failed_restarts > 0) and status.enabled = true'
@@ -14,7 +12,6 @@ path='/api/v2/hosts?search=last_report>"70 minutes ago" and (status.failed > 0 o
 headers = {"Accept": "application/json,version=2", \
     "Content-Type": "application/json", 
     }
-
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -42,7 +39,7 @@ def getFailedHosts(data):
 
 
 def main():
-
+    
     json_response = getResponse(baseURL+path, headers)
 
     if json_response:
@@ -55,4 +52,11 @@ def main():
 
 
 if __name__ == '__main__':
+
+    if len(sys.argv) < 3:
+        exit_msg_with_status("Usage: Scriptname.py <user> <personalApiToken>", 3)
+    else:
+        user = sys.argv[1]
+        personalApiToken = sys.argv[2]
+
     main()
