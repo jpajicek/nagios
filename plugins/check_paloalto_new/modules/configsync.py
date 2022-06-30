@@ -1,6 +1,6 @@
 ## Check IPsec SA on PaloAlto Next Gen Firewall
 
-from utils import nagios_msg, XMLreader
+from .utils import nagios_msg, XMLreader
 from bs4 import BeautifulSoup as bs
 
 def create_check(args):
