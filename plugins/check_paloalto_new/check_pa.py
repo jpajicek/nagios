@@ -4,7 +4,7 @@ import argparse
 import sys
 import logging as log
 
-from modules import ipsecsa, configsync, pathmonitor,  utils 
+from modules import ipsecsa, configsync, pathmonitor, registeredip, dynaddrgroup, utils 
 
 
 def main():
@@ -38,6 +38,15 @@ def parse_args(args):
     # Sub-Parser for command 'pathmonitor'
     parser_pathmonitor = subparsers.add_parser('pathmonitor', help='Check static route path monitoring.')
     parser_pathmonitor.set_defaults(func=pathmonitor)
+
+    # Sub-Parser for command 'registeredip'
+    parser_registeredip = subparsers.add_parser('registeredip', help='Check registered ip tag.')
+    parser_registeredip.set_defaults(func=registeredip)
+
+     # Sub-Parser for command 'dynamicaddressgroup'
+    parser_dynaddrgroup = subparsers.add_parser('dynaddressgroup', help='Check dynamic address group <name>.')
+    parser_dynaddrgroup.add_argument('-g', '--groupname', help='Dynamic Group Name', required=True)
+    parser_dynaddrgroup.set_defaults(func=dynaddrgroup)
 
     return parser.parse_args(args)
 
