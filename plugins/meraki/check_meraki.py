@@ -4,7 +4,7 @@ import sys, logging
 import requests,json
 import argparse
 
-base_url = 'https://api.meraki.com/api/v0/'
+base_url = 'https://api.meraki.com/api/v1/'
 apikey = ''
 netid = ''
 
@@ -37,12 +37,13 @@ def _returnhandler(statuscode, returntext):
     if str(statuscode) == '200' and validreturn:
         return returntext
     else:
-        print str(statuscode)
+        print(str(statuscode))
         _nagios_msg(3, 'Connection Error: {0}'.format(str(statuscode)))
 
 
 def _reader(url):
     headers = {
+         'Accept': "*/*",
          'x-cisco-meraki-api-key': format(str(apikey)),
          'Content-Type': 'application/json'
      }
@@ -62,22 +63,34 @@ def getdevicelist(netid):
     result = _reader(geturl)
     return result
     
-def getdevicestatus(devicelist, netid):
-    d_failed = []
-    d_active = []
-    for device in devicelist:
+def getdevicestatus(**params):
+    
+    d_online = []
+    d_offline = []
+    d_dormant = []
+    d_alerting = []
+
+    orgid = getorgid()
+    devices = params.get('devices')
+
+    for device in devices:
         name = device['name']
         serial = device['serial']
-        geturl = '{0}/networks/{1}/devices/{2}/uplink'.format(str(base_url), str(netid),str(serial))
+        #geturl = '{0}/networks/{1}/devices/{2}/uplink'.format(str(base_url), str(netid),str(serial))
+        geturl = '{0}/organizations/{1}/devices/statuses?serials[]={2}'.format(str(base_url), str(orgid),str(serial))
         data = _reader(geturl)
         for key in data:
             status = key['status']
-        if str(status) == 'Failed':
-            d_failed.append(str(name))
-        if str(status) == 'Active':
-            d_active.append(str(name))
-        #print '{0} ::::: {1}'.format(name,status)
-    return {"failed":d_failed, "active":d_active}           
+        if str(status) == 'online':
+            d_online.append(str(name))
+        if str(status) == 'offline':
+            d_offline.append(str(name))
+        if str(status) == 'alerting':
+            d_alerting.append(str(name))
+        if str(status) == 'dormant':
+            d_dormant.append(str(name))
+        #print(f'{name}: {status}')
+    return { "online":d_online, "offline":d_offline, "dormant": d_dormant, "alerting": d_alerting }           
 
 
 def parse_args(args):
@@ -95,14 +108,17 @@ def main():
     args = parse_args(sys.argv[1:])
     _setkey(str(args.token))
     netid = str(args.netid)
-   
-    devices = getdevicelist(netid)
-    result = getdevicestatus(devices, netid)
     
-    if bool(result['failed']):  
-        _nagios_msg(2, 'Critical: {0} Failed device(s): {1}'.format(len(result['failed']),str(result['failed'])))
+    devices = getdevicelist(netid)
+    status = getdevicestatus(devices=devices)
+    
+    if bool(status['offline']):  
+        _nagios_msg(2, 'Critical: {0} Offline device(s): {1}'.format(len(status['offline']),str(status['offline'])))
+    elif bool(status['alerting']):  
+        _nagios_msg(1, 'Warning: {0} Alerting device(s): {1}'.format(len(status['alerting']),str(status['alerting'])))
     else:
-        _nagios_msg(0, "OK: Let's dance, you are under surveillance - All {0} device(s) is online: {1}".format(len(result['active']),str(result['active'])))
+        _nagios_msg(0, 
+            f"OK: Let's dance, you are under surveillance - {len(status['online'])} Online device(s): {status['online']} | \n Dormant devices: {status['dormant']}")
     
 
 
